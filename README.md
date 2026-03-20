@@ -96,6 +96,13 @@ argocd cluster add <context-name>
 
 The CFK custom resources depend on the Confluent Operator, so it must be deployed first.
 
+1. Create the `confluent` namespace:
+```bash
+kubectl create namespace confluent
+```
+
+2. Deploy the operator using one of the options below:
+
 Option A — using the ArgoCD CLI:
 ```bash
 argocd app create confluent-operator \
@@ -134,8 +141,6 @@ spec:
   syncPolicy:
     automated:
       prune: true
-    syncOptions:
-      - CreateNamespace=true
 ```
 
 > **Important:** The `--revision` / `targetRevision` must use the **Helm chart version** (e.g. `0.1514.1`), not the CFK operator version (e.g. `3.2.0`). These are different versioning schemes. The mapping is shown below.
@@ -175,11 +180,12 @@ argocd app create <app-name> \
 For example:
 ```bash
 argocd app create mycfk \
---repo https://github.com/MosheBlumbergX/Argocd-CFK.git \
---path CFKCRsKRaft --dest-server https://kubernetes.default.svc \
---dest-namespace confluent \
---sync-policy automated \
---auto-prune 
+  --repo https://github.com/MosheBlumbergX/Argocd-CFK.git \
+  --path CFKCRsKRaft \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace confluent \
+  --sync-policy automated \
+  --auto-prune
 ```
 
 3. Open the Argo CD UI at `https://localhost:8080` to see the deployed applications.
@@ -190,7 +196,7 @@ You can also create applications through the [Argo CD web UI](https://argo-cd.re
 
 To confirm that Argo CD is syncing changes from Git to the cluster:
 
-1. Edit a resource in this repo, e.g. change `cleanup.policy` in `CFK-CRs/topic.yaml` from `delete` to `compact` (or vice versa).
+1. Edit a resource in this repo, e.g. change `cleanup.policy` in `CFKCRsKRaft/topic.yaml` from `delete` to `compact` (or vice versa).
 2. Commit and push the change.
 3. Observe Argo CD automatically syncing — visible in the UI or via `argocd app get <app-name>`.
 
