@@ -4,18 +4,15 @@ A GitOps approach to deploying [Confluent for Kubernetes (CFK)](https://docs.con
 
 ## Table of Contents
 
-- [Confluent for Kubernetes with Argo CD](#confluent-for-kubernetes-with-argo-cd)
-  - [Table of Contents](#table-of-contents)
-  - [Prerequisites](#prerequisites)
-  - [Repository Structure](#repository-structure)
-  - [Steps to deploy Argo CD](#steps-to-deploy-argo-cd)
-  - [Deploy Confluent Operator via ArgoCD](#deploy-confluent-operator-via-argocd)
-    - [CFK version to Helm chart version mapping](#cfk-version-to-helm-chart-version-mapping)
-  - [Steps to create CFK as an application via GitHub](#steps-to-create-cfk-as-an-application-via-github)
-  - [Verifying the GitOps Workflow](#verifying-the-gitops-workflow)
-  - [Useful Commands](#useful-commands)
-  - [Deletion](#deletion)
-  - [References](#references)
+- [Prerequisites](#prerequisites)
+- [Repository Structure](#repository-structure)
+- [Steps to deploy Argo CD](#steps-to-deploy-argo-cd)
+- [Deploy Confluent Operator via ArgoCD](#deploy-confluent-operator-via-argocd)
+- [Steps to create CFK as an application via GitHub](#steps-to-create-cfk-as-an-application-via-github)
+- [Verifying the GitOps Workflow](#verifying-the-gitops-workflow)
+- [Useful Commands](#useful-commands)
+- [Deletion](#deletion)
+- [References](#references)
 
 ## Prerequisites
 
@@ -90,7 +87,6 @@ Option B — list all contexts and pick one manually:
 kubectl config get-contexts -o name
 argocd cluster add <context-name>
 ```
-
 
 ## Deploy Confluent Operator via ArgoCD
 
@@ -209,8 +205,7 @@ kubectl --namespace confluent get topic
 kubectl --namespace confluent exec -it kafka-2 -- kafka-topics --bootstrap-server localhost:9071 --describe --topic moshetopic
 ```
 
-
-## Deletion 
+## Deletion
 
 To [delete](https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/) the app: 
 
