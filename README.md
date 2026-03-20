@@ -46,6 +46,68 @@ argocd cluster add <context-name>
 ```
 
 
+## Deploy Confluent Operator via ArgoCD
+
+The CFK custom resources depend on the Confluent Operator, so it must be deployed first.
+
+Option A — using the ArgoCD CLI:
+```bash
+argocd app create confluent-operator \
+  --repo https://packages.confluent.io/helm \
+  --helm-chart confluent-for-kubernetes \
+  --revision 0.1514.1 \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace confluent \
+  --sync-policy automated \
+  --auto-prune
+```
+
+Option B — declarative YAML (full GitOps):
+
+Create and apply an Application manifest:
+```bash
+kubectl apply -f argocd/confluent-operator.yaml
+```
+
+```yaml
+# argocd/confluent-operator.yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: confluent-operator
+  namespace: argocd
+spec:
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: confluent
+  source:
+    repoURL: https://packages.confluent.io/helm
+    chart: confluent-for-kubernetes
+    targetRevision: "0.1514.1"
+  project: default
+  syncPolicy:
+    automated:
+      prune: true
+    syncOptions:
+      - CreateNamespace=true
+```
+
+> **Important:** The `--revision` / `targetRevision` must use the **Helm chart version** (e.g. `0.1514.1`), not the CFK operator version (e.g. `3.2.0`). These are different versioning schemes. The mapping is shown below.
+
+### CFK version to Helm chart version mapping
+
+| CFK Operator Version | Helm Chart Version | App Version |
+|---|---|---|
+| 3.2.0 | 0.1514.1 | 3.2.0 |
+| 3.1.1 | 0.1351.59 | 3.1.1 |
+| 3.1.0 | 0.1351.24 | 3.1.0 |
+| 3.0.3 | 0.1263.105 | 3.0.3 |
+| 2.11.3 | 0.1193.70 | 2.11.3 |
+
+For the full list and additional planning details, see the [Confluent for Kubernetes documentation](https://docs.confluent.io/operator/current/co-plan.html#co-long-image-tags).
+
+> Check the latest chart version with: `helm search repo confluentinc/confluent-for-kubernetes --versions`
+
 ## Steps to create CFK as an application via GitHub  
 
 1. Create An Application From A Git Repository
