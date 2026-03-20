@@ -2,6 +2,9 @@
 
 This example leverage a gitop approach to deploying Confluent For Kubernetes with integration of Argo CD and CR, using [ArgosCD](https://argo-cd.readthedocs.io/en/stable/getting_started/) for CI/CD with minikube. 
 
+The idea of the CI/CD is to deploy the application to the cluster when the code is pushed to the repository.
+To check if the CI/CD is working, you can push a change to the repository and see if the application is deployed to the cluster.
+
 ## Steps to deploy Argo CD
 
 1. Install Argo CD  
@@ -116,13 +119,15 @@ For the full list and additional planning details, see the [Confluent for Kubern
 kubectl config set-context --current --namespace=argocd
 
 
-argocd app create myconfluentfork8s \
---repo https://github.com/MosheBlumbergX/Argocd-CFK.git \
---path CFK-CRs --dest-server https://kubernetes.default.svc \
+argocd app create <app-name> \
+--repo https://github.com/MosheBlumbergX/kubernetesLogging.git \
+--path <path> --dest-server https://kubernetes.default.svc \
 --dest-namespace confluent \
 --sync-policy automated \
 --auto-prune 
 ```
+
+At this point you can open the UI at `https://localhost:8080` and see the applications deployed.
 
 2. You can also leverage the [CLI](https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-ui)
 
@@ -136,11 +141,28 @@ kubectl --namespace confluent get topic
 kubectl  --namespace confluent exec -it kafka-2  -- kafka-topics --bootstrap-server localhost:9071 --describe --topic moshetopic   
 ```
 
+## Checking if the CI/CD is working
+
+The idea of the CI/CD is to deploy the application to the cluster when the code is pushed to the repository.
+To check if the CI/CD is working, you can push a change to the repository and see if the application is deployed to the cluster.
+
+For example, you can change the topic configuration in the `topic.yaml` file and push the change to the repository.
+Change the cleanup policy to `compact` instead of `delete` or vice versa.
+Commit the change and push it to the repository.
+
+Observe the changes in the UI and in the cluster.
+
 
 ## Deletion 
 
 To [delete](https://argo-cd.readthedocs.io/en/stable/user-guide/app_deletion/) the app: 
 
 ```bash
-argocd app delete myconfluentfork8s --cascade -y 
+argocd app delete <app-name> --cascade -y 
 ```
+
+## References
+
+- [Confluent for Kubernetes](https://docs.confluent.io/operator/current/)
+- [Argo CD](https://argo-cd.readthedocs.io/en/stable/getting_started/)
+- [Confluent Platform](https://docs.confluent.io/platform/current/platform/overview.html)
