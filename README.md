@@ -1,9 +1,52 @@
-# Argo cd CFK
+# Confluent for Kubernetes with Argo CD
 
-This example leverage a gitop approach to deploying Confluent For Kubernetes with integration of Argo CD and CR, using [ArgosCD](https://argo-cd.readthedocs.io/en/stable/getting_started/) for CI/CD with minikube. 
+A GitOps approach to deploying [Confluent for Kubernetes (CFK)](https://docs.confluent.io/operator/current/) using [Argo CD](https://argo-cd.readthedocs.io/en/stable/getting_started/) for continuous delivery. Push changes to this Git repo and Argo CD automatically syncs them to your Kubernetes cluster.
 
-The idea of the CI/CD is to deploy the application to the cluster when the code is pushed to the repository.
-To check if the CI/CD is working, you can push a change to the repository and see if the application is deployed to the cluster.
+## Table of Contents
+
+- [Confluent for Kubernetes with Argo CD](#confluent-for-kubernetes-with-argo-cd)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Repository Structure](#repository-structure)
+  - [Steps to deploy Argo CD](#steps-to-deploy-argo-cd)
+  - [Deploy Confluent Operator via ArgoCD](#deploy-confluent-operator-via-argocd)
+    - [CFK version to Helm chart version mapping](#cfk-version-to-helm-chart-version-mapping)
+  - [Steps to create CFK as an application via GitHub](#steps-to-create-cfk-as-an-application-via-github)
+  - [Verifying the GitOps Workflow](#verifying-the-gitops-workflow)
+  - [Useful Commands](#useful-commands)
+  - [Deletion](#deletion)
+  - [References](#references)
+
+## Prerequisites
+
+- A running Kubernetes cluster (e.g. Docker Desktop, minikube, EKS, GKE, etc.)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) installed and configured
+- [Helm 3](https://helm.sh/docs/intro/install/) installed
+- [Homebrew](https://brew.sh/) (macOS, for installing the Argo CD CLI)
+
+## Repository Structure
+
+```
+CFKCRsZookeeper/       # Confluent Platform with ZooKeeper
+  kafka.yaml           #   Kafka broker cluster
+  zookeeper.yaml       #   ZooKeeper ensemble
+  connect.yaml         #   Kafka Connect workers
+  schemaregistry.yaml  #   Schema Registry
+  ksqldb.yaml          #   ksqlDB
+  controlcenter.yaml   #   Confluent Control Center
+  topic.yaml           #   KafkaTopic resource
+CFKCRsKRaft/           # Confluent Platform with KRaft (no ZooKeeper)
+  kraftcontroller.yaml #   KRaft controller quorum
+  kafka.yaml           #   Kafka broker cluster
+  connect.yaml         #   Kafka Connect workers
+  schemaregistry.yaml  #   Schema Registry
+  ksqldb.yaml          #   ksqlDB
+  controlcenter.yaml   #   Confluent Control Center
+  kafkarestproxy.yaml  #   Kafka REST Proxy
+  topic.yaml           #   KafkaTopic resource
+```
+
+Point ArgoCD's `--path` at the directory matching your deployment mode — each file is a separate Confluent Platform component, making it easy to add, remove, or modify individual resources via Git.
 
 ## Steps to deploy Argo CD
 
@@ -113,44 +156,52 @@ For the full list and additional planning details, see the [Confluent for Kubern
 
 ## Steps to create CFK as an application via GitHub  
 
-1. Create An Application From A Git Repository
-
+1. Set the default namespace to argocd:
 ```bash
 kubectl config set-context --current --namespace=argocd
+```
 
-
+2. Create an Application from a Git repository:
+```bash
 argocd app create <app-name> \
---repo https://github.com/MosheBlumbergX/kubernetesLogging.git \
---path <path> --dest-server https://kubernetes.default.svc \
+  --repo https://github.com/<your-org>/<your-repo>.git \
+  --path <path> \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace confluent \
+  --sync-policy automated \
+  --auto-prune
+```
+
+For example:
+```bash
+argocd app create mycfk \
+--repo https://github.com/MosheBlumbergX/Argocd-CFK.git \
+--path CFKCRsKRaft --dest-server https://kubernetes.default.svc \
 --dest-namespace confluent \
 --sync-policy automated \
 --auto-prune 
 ```
 
-At this point you can open the UI at `https://localhost:8080` and see the applications deployed.
+3. Open the Argo CD UI at `https://localhost:8080` to see the deployed applications.
 
-2. You can also leverage the [CLI](https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-ui)
+You can also create applications through the [Argo CD web UI](https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-ui).
 
+## Verifying the GitOps Workflow
 
-### Some useful kubectl commands 
+To confirm that Argo CD is syncing changes from Git to the cluster:
+
+1. Edit a resource in this repo, e.g. change `cleanup.policy` in `CFK-CRs/topic.yaml` from `delete` to `compact` (or vice versa).
+2. Commit and push the change.
+3. Observe Argo CD automatically syncing — visible in the UI or via `argocd app get <app-name>`.
+
+## Useful Commands
 
 ```bash
 kubectl --namespace confluent get confluent
 kubectl --namespace confluent get pods
 kubectl --namespace confluent get topic
-kubectl  --namespace confluent exec -it kafka-2  -- kafka-topics --bootstrap-server localhost:9071 --describe --topic moshetopic   
+kubectl --namespace confluent exec -it kafka-2 -- kafka-topics --bootstrap-server localhost:9071 --describe --topic moshetopic
 ```
-
-## Checking if the CI/CD is working
-
-The idea of the CI/CD is to deploy the application to the cluster when the code is pushed to the repository.
-To check if the CI/CD is working, you can push a change to the repository and see if the application is deployed to the cluster.
-
-For example, you can change the topic configuration in the `topic.yaml` file and push the change to the repository.
-Change the cleanup policy to `compact` instead of `delete` or vice versa.
-Commit the change and push it to the repository.
-
-Observe the changes in the UI and in the cluster.
 
 
 ## Deletion 
