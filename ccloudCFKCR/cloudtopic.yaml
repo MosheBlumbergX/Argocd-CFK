@@ -9,8 +9,8 @@ spec:
   configs:
     message.timestamp.type: "LogAppendTime"
   kafkaRest:
-    endpoint: https://pkc-lgwgm.eastus2.azure.confluent.cloud:443
-    kafkaClusterID: lkc-jk5q3p
+    endpoint: https://<kafka-rest-endpoint>:443
+    kafkaClusterID: <kafka-cluster-id>
     authentication:
       type: basic
       basic:

@@ -1,17 +1,17 @@
 apiVersion: platform.confluent.io/v1beta1
 kind: Schema
 metadata:
-  name: user-value-schema
+  name: myschema-value
   namespace: confluent
 spec:
   # The subject name in Schema Registry
-  name: user-value 
+  name: myschema-value
   compatibilityLevel: BACKWARD
   data:
     configRef: user-schema-config
     format: avro
   schemaRegistryRest:
-    endpoint: https://psrc-40382p5.eastus2.azure.confluent.cloud
+    endpoint: <schema-registry-endpoint>
     authentication:
       type: basic
       basic:

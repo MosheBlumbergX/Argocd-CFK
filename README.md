@@ -4,15 +4,23 @@ A GitOps approach to deploying [Confluent for Kubernetes (CFK)](https://docs.con
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)
-- [Repository Structure](#repository-structure)
-- [Steps to deploy Argo CD](#steps-to-deploy-argo-cd)
-- [Deploy Confluent Operator via ArgoCD](#deploy-confluent-operator-via-argocd)
-- [Steps to create CFK as an application via GitHub](#steps-to-create-cfk-as-an-application-via-github)
-- [Verifying the GitOps Workflow](#verifying-the-gitops-workflow)
-- [Useful Commands](#useful-commands)
-- [Deletion](#deletion)
-- [References](#references)
+- [Confluent for Kubernetes with Argo CD](#confluent-for-kubernetes-with-argo-cd)
+  - [Table of Contents](#table-of-contents)
+  - [Prerequisites](#prerequisites)
+  - [Repository Structure](#repository-structure)
+  - [Steps to deploy Argo CD](#steps-to-deploy-argo-cd)
+  - [Deploy Confluent Operator via ArgoCD](#deploy-confluent-operator-via-argocd)
+    - [CFK version to Helm chart version mapping](#cfk-version-to-helm-chart-version-mapping)
+  - [Steps to create CFK as an application via GitHub](#steps-to-create-cfk-as-an-application-via-github)
+  - [Confluent Cloud Resources (ccloudCFKCR)](#confluent-cloud-resources-ccloudcfkcr)
+    - [Prerequisites for Confluent Cloud](#prerequisites-for-confluent-cloud)
+    - [Secrets setup](#secrets-setup)
+    - [Configuration](#configuration)
+    - [Deploying via ArgoCD](#deploying-via-argocd)
+  - [Verifying the GitOps Workflow](#verifying-the-gitops-workflow)
+  - [Useful Commands](#useful-commands)
+  - [Deletion](#deletion)
+  - [References](#references)
 
 ## Prerequisites
 
@@ -41,6 +49,12 @@ CFKCRsKRaft/           # Confluent Platform with KRaft (no ZooKeeper)
   controlcenter.yaml   #   Confluent Control Center
   kafkarestproxy.yaml  #   Kafka REST Proxy
   topic.yaml           #   KafkaTopic resource
+ccloudCFKCR/           # CFK custom resources targeting Confluent Cloud
+  cloudtopic.yaml      #   KafkaTopic managed via Confluent Cloud REST API
+  schema.yaml          #   Schema registered to Confluent Cloud Schema Registry
+  ccloud-sr-credentials.yaml  # Secret for Schema Registry API credentials
+  cloud-rest-access.yaml      # Secret for Kafka REST API credentials
+  user-schema-configCM.yaml   # ConfigMap with the Avro schema definition
 ```
 
 Point ArgoCD's `--path` at the directory matching your deployment mode — each file is a separate Confluent Platform component, making it easy to add, remove, or modify individual resources via Git.
@@ -187,6 +201,74 @@ argocd app create mycfk \
 3. Open the Argo CD UI at `https://localhost:8080` to see the deployed applications.
 
 You can also create applications through the [Argo CD web UI](https://argo-cd.readthedocs.io/en/stable/getting_started/#creating-apps-via-ui).
+
+## Confluent Cloud Resources (ccloudCFKCR)
+
+The `ccloudCFKCR/` directory contains CFK custom resources that manage topics and schemas on **Confluent Cloud** rather than a self-managed Confluent Platform cluster. CFK communicates with Confluent Cloud through the Kafka REST API and Schema Registry REST API.
+
+### Prerequisites for Confluent Cloud
+
+- A Confluent Cloud cluster with the Kafka REST API enabled
+- A Confluent Cloud Schema Registry
+- API keys for both the Kafka REST API and Schema Registry
+
+### Secrets setup
+
+Before deploying the resources, create the required Kubernetes secrets with your Confluent Cloud API credentials.
+
+The secret data must be base64-encoded using the `username=`/`password=` format (one per line). Encode your credentials with `printf` and `base64`:
+
+```bash
+printf 'username=MY_API_KEY\npassword=MY_API_SECRET' | base64
+```
+
+This outputs a base64 string that you place in the secret YAML's `data.basic.txt` field.
+
+Alternatively, create the secrets directly with `kubectl`:
+
+**Kafka REST API credentials** (`cloud-rest-access`):
+```bash
+kubectl -n confluent create secret generic cloud-rest-access \
+  --from-literal=basic.txt="$(printf 'username=%s\npassword=%s' '<kafka-rest-api-key>' '<kafka-rest-api-secret>')"
+```
+
+**Schema Registry credentials** (`ccloud-sr-credentials`):
+```bash
+kubectl -n confluent create secret generic ccloud-sr-credentials \
+  --from-literal=basic.txt="$(printf 'username=%s\npassword=%s' '<sr-api-key>' '<sr-api-secret>')"
+```
+
+> **Note:** Replace the placeholder values above with your actual Confluent Cloud API keys and secrets.
+
+### Configuration
+
+> **Important:** The YAML files contain placeholder endpoints and cluster IDs that **must** be replaced with your own Confluent Cloud values before deploying. The resources will fail to sync if the placeholders are not updated.
+
+Replace the following values to match your Confluent Cloud environment:
+
+| File | Field | Replace with |
+|---|---|---|
+| `cloudtopic.yaml` | `spec.kafkaRest.endpoint` | Your Kafka cluster REST endpoint (e.g. `https://pkc-xxxxx.region.provider.confluent.cloud:443`) |
+| `cloudtopic.yaml` | `spec.kafkaRest.kafkaClusterID` | Your Kafka cluster ID (e.g. `lkc-xxxxxx`) |
+| `schema.yaml` | `spec.schemaRegistryRest.endpoint` | Your Schema Registry endpoint (e.g. `https://psrc-xxxxx.region.provider.confluent.cloud`) |
+
+You can find these values in the [Confluent Cloud Console](https://confluent.cloud/) under your cluster and Schema Registry settings.
+
+The schema definition itself is stored in the `user-schema-configCM.yaml` ConfigMap and can be modified to fit your use case.
+
+### Deploying via ArgoCD
+
+```bash
+argocd app create mycfk-cloud \
+  --repo https://github.com/MosheBlumbergX/Argocd-CFK.git \
+  --path ccloudCFKCR \
+  --dest-server https://kubernetes.default.svc \
+  --dest-namespace confluent \
+  --sync-policy automated \
+  --auto-prune
+```
+
+> **Important:** The secrets (`cloud-rest-access` and `ccloud-sr-credentials`) should be created manually or through a separate secrets management workflow **before** ArgoCD syncs the application. Alternatively, you can include the secret YAML files in the directory (with placeholder values replaced) and let ArgoCD manage them — but be cautious about storing credentials in Git.
 
 ## Verifying the GitOps Workflow
 
