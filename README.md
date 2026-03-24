@@ -211,6 +211,21 @@ The `ccloudCFKCR/` directory contains CFK custom resources that manage topics an
 - A Confluent Cloud cluster with the Kafka REST API enabled
 - A Confluent Cloud Schema Registry
 - API keys for both the Kafka REST API and Schema Registry
+- A service account with the required roles (see below)
+
+### Schema Registry service account permissions
+
+The service account used for Schema Registry API keys must have the following roles assigned on the Schema Registry resource (All schema subjects `*`):
+
+| Role | Resource | Resource Type |
+|---|---|---|
+| `ResourceOwner` | `*` (All schema subjects) | Schema subject |
+| `DeveloperWrite` | `*` (All schema subjects) | Schema subject |
+| `DeveloperRead` | `*` (All schema subjects) | Schema subject |
+
+These roles are configured in the Confluent Cloud Console under **Schema Registry** > **Access** for your environment's Stream Governance package.
+
+> **Note:** At minimum, `DeveloperWrite` is required for CFK to register and update schemas. `DeveloperRead` is needed to read existing schemas, and `ResourceOwner` is needed to manage subject-level compatibility settings.
 
 ### Secrets setup
 
